@@ -1,169 +1,115 @@
-// src/contract.js
-import { web3 } from './web3';
+import Web3 from 'web3';
+import { abi as contractAbi } from './abi.json'; // Assuming ABI is stored in a separate JSON file
 
-// ABI definition
-const abi = [
-  {
-    "inputs": [],
-    "stateMutability": "nonpayable",
-    "type": "constructor"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "pasteId",
-        "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "owner",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "string",
-        "name": "content",
-        "type": "string"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      }
-    ],
-    "name": "PasteCreated",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "pasteId",
-        "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "owner",
-        "type": "address"
-      }
-    ],
-    "name": "PasteDeleted",
-    "type": "event"
-  },
-  {
-    "inputs": [],
-    "name": "pasteCount",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function",
-    "constant": true
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "pastes",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "content",
-        "type": "string"
-      },
-      {
-        "internalType": "address",
-        "name": "owner",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function",
-    "constant": true
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_content",
-        "type": "string"
-      }
-    ],
-    "name": "createPaste",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_pasteId",
-        "type": "uint256"
-      }
-    ],
-    "name": "getPaste",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "content",
-        "type": "string"
-      },
-      {
-        "internalType": "address",
-        "name": "owner",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function",
-    "constant": true
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_pasteId",
-        "type": "uint256"
-      }
-    ],
-    "name": "deletePaste",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  }
-];
+// Initialize Web3 instance
+const web3 = new Web3(Web3.givenProvider || 'http://localhost:8545');
 
-// Contract address
-const contractAddress = '0x2DdD22AaBFdbb9181c332F8EFA1b90BD7E4075D6';
+// Contract address (should be configurable)
+const contractAddress = process.env.REACT_APP_CONTRACT_ADDRESS || '0x2DdD22AaBFdbb9181c332F8EFA1b90BD7E4075D6';
 
 // Create a contract instance
-const contract = new web3.eth.Contract(abi, contractAddress);
+let contract;
+try {
+  contract = new web3.eth.Contract(contractAbi, contractAddress);
+} catch (error) {
+  console.error('Failed to create contract instance:', error);
+  throw error;
+}
+
+// Utility function for error handling
+async function executeContractMethod(method, options = {}) {
+  try {
+    const accounts = await web3.eth.getAccounts();
+    const account = accounts[0];
+    const gasEstimate = await method.estimateGas({ from: account });
+    return await method.send({ from: account, gas: gasEstimate, ...options });
+  } catch (error) {
+    console.error('Error executing contract method:', error);
+    throw error;
+  }
+}
+
+// Function to create a paste with input validation and duplicate check
+export async function createPaste(content) {
+  if (typeof content !== 'string' || content.trim() === '') {
+    throw new Error('Content must be a non-empty string');
+  }
+
+  // Optional: Check for duplicate content (requires additional contract support)
+  const existingPastes = await contract.methods.pasteCount().call();
+  for (let i = 0; i < existingPastes; i++) {
+    const paste = await contract.methods.pastes(i).call();
+    if (paste.content === content) {
+      throw new Error('Duplicate content is not allowed');
+    }
+  }
+
+  return executeContractMethod(contract.methods.createPaste(content));
+}
+
+// Function to delete a paste with ownership check
+export async function deletePaste(pasteId) {
+  if (!Number.isInteger(pasteId) || pasteId < 0) {
+    throw new Error('Paste ID must be a non-negative integer');
+  }
+
+  const paste = await contract.methods.getPaste(pasteId).call();
+  const accounts = await web3.eth.getAccounts();
+  const account = accounts[0];
+
+  if (paste.owner.toLowerCase() !== account.toLowerCase()) {
+    throw new Error('Only the owner can delete this paste');
+  }
+
+  return executeContractMethod(contract.methods.deletePaste(pasteId));
+}
+
+// Function to get paste details
+export async function getPaste(pasteId) {
+  if (!Number.isInteger(pasteId) || pasteId < 0) {
+    throw new Error('Paste ID must be a non-negative integer');
+  }
+
+  try {
+    return await contract.methods.getPaste(pasteId).call();
+  } catch (error) {
+    console.error('Error fetching paste details:', error);
+    throw error;
+  }
+}
+
+// Function to update paste content with ownership check
+export async function updatePaste(pasteId, newContent) {
+  if (typeof newContent !== 'string' || newContent.trim() === '') {
+    throw new Error('New content must be a non-empty string');
+  }
+
+  const paste = await contract.methods.getPaste(pasteId).call();
+  const accounts = await web3.eth.getAccounts();
+  const account = accounts[0];
+
+  if (paste.owner.toLowerCase() !== account.toLowerCase()) {
+    throw new Error('Only the owner can update this paste');
+  }
+
+  return executeContractMethod(contract.methods.updatePaste(pasteId, newContent));
+}
+
+// Event listeners for PasteCreated and PasteDeleted
+contract.events.PasteCreated({}, (error, event) => {
+  if (error) {
+    console.error('Error in PasteCreated event:', error);
+  } else {
+    console.log('PasteCreated event:', event);
+  }
+});
+
+contract.events.PasteDeleted({}, (error, event) => {
+  if (error) {
+    console.error('Error in PasteDeleted event:', error);
+  } else {
+    console.log('PasteDeleted event:', event);
+  }
+});
 
 export default contract;
