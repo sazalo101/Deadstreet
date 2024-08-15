@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import './App.css';
 
-
+// Smart contract ABI and address
 const contractABI = [
   {
     "inputs": [],
@@ -13,7 +13,7 @@ const contractABI = [
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
+        "indexed": true,
         "internalType": "uint256",
         "name": "pasteId",
         "type": "uint256"
@@ -44,7 +44,7 @@ const contractABI = [
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
+        "indexed": true,
         "internalType": "uint256",
         "name": "pasteId",
         "type": "uint256"
@@ -97,6 +97,26 @@ const contractABI = [
         "internalType": "uint256",
         "name": "timestamp",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "constant": true
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "pasteExists",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -161,7 +181,7 @@ const contractABI = [
   }
 ];
 
-const contractAddress = '0x2DdD22AaBFdbb9181c332F8EFA1b90BD7E4075D6';
+const contractAddress = '0x5312D6956854ecEFFA089e3A789343fdbe171FfA';
 
 export default function DeadstreetDapp() {
   const [contract, setContract] = useState(null);
@@ -173,24 +193,30 @@ export default function DeadstreetDapp() {
 
   useEffect(() => {
     const init = async () => {
-      if (typeof window.ethereum !== 'undefined') {
+      if (window.ethereum) {
         try {
-          await window.ethereum.request({ method: 'eth_requestAccounts' });
-          const provider = new ethers.providers.Web3Provider(window.ethereum);
-          const signer = provider.getSigner();
-          const contractInstance = new ethers.Contract(contractAddress, contractABI, signer);
-          setContract(contractInstance);
-          const address = await signer.getAddress();
-          setAccount(address);
-          await loadPastes(contractInstance);
-          setLoading(false);
+          if (window.ethereum.isMetaMask || window.ethereum.isMiniPay) {
+            // Request accounts from wallet
+            await window.ethereum.request({ method: 'eth_requestAccounts' });
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            const signer = provider.getSigner();
+            const contractInstance = new ethers.Contract(contractAddress, contractABI, signer);
+            setContract(contractInstance);
+            const address = await signer.getAddress();
+            setAccount(address);
+            await loadPastes(contractInstance);
+            setLoading(false);
+          } else {
+            setError("MetaMask or MiniPay is not installed. Please install a compatible wallet to use this dapp.");
+            setLoading(false);
+          }
         } catch (error) {
           console.error("An error occurred:", error);
-          setError("Failed to connect to the blockchain. Please make sure you're connected to the Celo network in MetaMask.");
+          setError("Failed to connect to the blockchain. Please make sure you're connected to MetaMask or MiniPay.");
           setLoading(false);
         }
       } else {
-        setError("Please install MetaMask to use this dapp.");
+        setError("Please install MetaMask or MiniPay to use this dapp.");
         setLoading(false);
       }
     };
@@ -201,10 +227,15 @@ export default function DeadstreetDapp() {
   const loadPastes = async (contractInstance) => {
     try {
       const pasteCount = await contractInstance.pasteCount();
+      console.log("Paste count:", pasteCount.toString());
       const loadedPastes = [];
       for (let i = 0; i < pasteCount; i++) {
-        const paste = await contractInstance.getPaste(i);
-        loadedPastes.push({ id: i, content: paste.content, owner: paste.owner, timestamp: paste.timestamp.toString() });
+        const exists = await contractInstance.pasteExists(i);
+        if (exists) {
+          const paste = await contractInstance.getPaste(i);
+          console.log("Loaded paste:", paste);
+          loadedPastes.push({ id: i, content: paste.content, owner: paste.owner, timestamp: paste.timestamp.toString() });
+        }
       }
       setPastes(loadedPastes);
     } catch (error) {
@@ -277,18 +308,14 @@ export default function DeadstreetDapp() {
           <div key={paste.id} className="border p-4 rounded">
             <p className="mb-2">{paste.content}</p>
             <p className="text-sm text-gray-600">Owner: {paste.owner}</p>
-            <p className="text-sm text-gray-600">
-              Timestamp: {new Date(parseInt(paste.timestamp) * 1000).toLocaleString()}
-            </p>
-            {paste.owner.toLowerCase() === account.toLowerCase() && (
-              <button
-                className="mt-2 bg-red-500 text-white px-2 py-1 rounded text-sm"
-                onClick={() => deletePaste(paste.id)}
-                disabled={loading}
-              >
-                Delete
-              </button>
-            )}
+            <p className="text-sm text-gray-600">Timestamp: {new Date(parseInt(paste.timestamp) * 1000).toLocaleString()}</p>
+            <button
+              className="mt-2 bg-red-500 text-white px-4 py-2 rounded"
+              onClick={() => deletePaste(paste.id)}
+              disabled={loading}
+            >
+              Delete Paste
+            </button>
           </div>
         ))}
       </div>

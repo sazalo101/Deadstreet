@@ -1,106 +1,112 @@
-/* app.css */
-
-/* Base styles */
+/* General Styles */
 body {
   font-family: 'Arial', sans-serif;
-  background-color: #f0f4f8;
-  color: #333;
+  background-color: #f0f2f5;
   margin: 0;
   padding: 0;
 }
 
+/* Container */
 .container {
-  max-width: 1200px;
+  max-width: 800px;
   margin: 0 auto;
   padding: 20px;
+  background-color: #fff;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  animation: fadeIn 1s ease-out;
 }
 
-/* Heading styles */
-h1, h2 {
-  margin: 0;
-  padding: 0;
+/* Headings */
+h1 {
+  text-align: center;
   color: #333;
+  font-size: 2.5rem;
+  animation: slideDown 1s ease-out;
 }
 
-/* Buttons */
-button {
-  cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.2s ease;
+h2 {
+  color: #555;
+  animation: slideDown 1s ease-out;
 }
 
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-button:hover:not(:disabled) {
-  background-color: #007bff;
-  transform: scale(1.05);
-}
-
-button:active:not(:disabled) {
-  background-color: #0056b3;
-}
-
-/* Textarea */
+/* Input Styles */
 textarea {
-  transition: border-color 0.3s ease;
+  width: 100%;
+  height: 100px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+  resize: none;
+  transition: border-color 0.3s;
 }
 
 textarea:focus {
-  border-color: #007bff;
+  border-color: #4a90e2;
   outline: none;
+  box-shadow: 0 0 8px rgba(74, 144, 226, 0.3);
 }
 
-/* Paste items */
-.paste-item {
-  border: 1px solid #ddd;
+/* Button Styles */
+button {
+  display: inline-block;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  padding: 10px 20px;
   border-radius: 8px;
-  background-color: #fff;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  padding: 16px;
-  transition: box-shadow 0.3s ease, transform 0.2s ease;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
 }
 
-.paste-item:hover {
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
+button:hover {
+  background-color: #357ABD;
 }
 
-/* Loading spinner */
-.loading-spinner {
-  border: 4px solid rgba(0, 0, 0, 0.1);
-  border-radius: 50%;
-  border-top: 4px solid #007bff;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
-  margin: 20px auto;
+button:disabled {
+  background-color: #aaa;
+  cursor: not-allowed;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+/* Paste Box Styles */
+.space-y-4 > div {
+  animation: slideIn 0.5s ease-out;
 }
 
-/* Error messages */
+.border {
+  border: 2px solid #ddd;
+  background-color: #fafafa;
+  border-radius: 8px;
+  padding: 20px;
+  transition: transform 0.3s ease;
+}
+
+.border:hover {
+  transform: scale(1.02);
+}
+
+/* Text Styles */
 .text-red-500 {
-  color: #dc3545;
+  color: #e3342f;
 }
 
-/* Utility classes */
-.mt-2 {
-  margin-top: 8px;
+.text-gray-600 {
+  color: #718096;
 }
 
-.mb-2 {
-  margin-bottom: 8px;
+/* Keyframe Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-.mb-4 {
-  margin-bottom: 16px;
+@keyframes slideDown {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
-.space-y-4 > * + * {
-  margin-top: 16px;
+@keyframes slideIn {
+  from { transform: translateX(-20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
